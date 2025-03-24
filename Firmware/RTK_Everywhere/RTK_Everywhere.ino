@@ -23,8 +23,8 @@
 // needed during development
 #define COMPILE_BT       // Comment out to remove Bluetooth functionality
 #define COMPILE_WIFI     // Comment out to remove WiFi functionality
-#define COMPILE_ETHERNET // Comment out to remove Ethernet (W5500) support
-#define COMPILE_CELLULAR // Comment out to remove cellular modem support
+//#define COMPILE_ETHERNET // Comment out to remove Ethernet (W5500) support
+//#define COMPILE_CELLULAR // Comment out to remove cellular modem support
 
 #ifdef COMPILE_WIFI
 #define COMPILE_AP     // Requires WiFi. Comment out to remove Access Point functionality
@@ -34,17 +34,17 @@
 #define COMPILE_ZED      // Comment out to remove ZED-F9x functionality
 #define COMPILE_L_BAND   // Comment out to remove L-Band functionality
 #define COMPILE_UM980 // Comment out to remove UM980 functionality
-#define COMPILE_MOSAICX5 // Comment out to remove mosaic-X5 functionality
-#define COMPILE_LG290P   // Comment out to remove LG290P functionality
+//#define COMPILE_MOSAICX5 // Comment out to remove mosaic-X5 functionality
+//#define COMPILE_LG290P   // Comment out to remove LG290P functionality
 
-#define COMPILE_IM19_IMU             // Comment out to remove IM19_IMU functionality
-#define COMPILE_POINTPERFECT_LIBRARY // Comment out to remove PPL support
-#define COMPILE_BQ40Z50              // Comment out to remove BQ40Z50 functionality
+//#define COMPILE_IM19_IMU             // Comment out to remove IM19_IMU functionality
+//#define COMPILE_POINTPERFECT_LIBRARY // Comment out to remove PPL support
+//#define COMPILE_BQ40Z50              // Comment out to remove BQ40Z50 functionality
 
 #if defined(COMPILE_WIFI) || defined(COMPILE_ETHERNET) || defined(COMPILE_CELLULAR)
 #define COMPILE_NETWORK
 #define COMPILE_MQTT_CLIENT // Comment out to remove MQTT Client functionality
-#define COMPILE_OTA_AUTO    // Comment out to disable automatic over-the-air firmware update
+//#define COMPILE_OTA_AUTO    // Comment out to disable automatic over-the-air firmware update
 #define COMPILE_HTTP_CLIENT // Comment out to disable HTTP Client (PointPerfect ZTP) functionality
 #endif                      // COMPILE_WIFI || COMPILE_ETHERNET || COMPILE_CELLULAR
 
