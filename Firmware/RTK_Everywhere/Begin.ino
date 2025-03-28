@@ -183,17 +183,148 @@ void beginBoard()
 {
     if (productVariant == RTK_UNKNOWN)
     {
-        // RTK is unknown. We can not proceed...
-        // We don't know the productVariant, but we do know the MAC address. Print that.
-        char hardwareID[30];
-        snprintf(hardwareID, sizeof(hardwareID), "Device MAC: %02X%02X%02X%02X%02X%02X", btMACAddress[0],
-                 btMACAddress[1], btMACAddress[2], btMACAddress[3], btMACAddress[4], btMACAddress[5]);
-        systemPrintln("========================");
-        systemPrintln(hardwareID);
-        systemPrintln("========================");
+#ifdef COMPILE_UM980
+        gnss = (GNSS *)new GNSS_UM980();
+#else  // COMPILE_UM980
+        gnss = (GNSS *)new GNSS_None();
+        systemPrintln("<<<<<<<<<< !!!!!!!!!! UM980 NOT COMPILED !!!!!!!!!! >>>>>>>>>>");
+#endif // COMPILE_UM980
 
-        reportFatalError("Product variant unknown. Unable to proceed. Please contact SparkFun with the \"Device MAC\" "
-                         "and the \"Board ADC ID (mV)\" reported above.");
+        present.brand = BRAND_SPARKFUN;
+        present.psram_2mb = true;
+        present.gnss_um980 = true;
+        present.encryption_atecc608a = true;
+        //present.button_powerHigh = true; // Button is pressed when high
+        present.antennaPhaseCenter_mm = 42.0; // Default to SPK6618H APC, average of L1/L2
+        present.needsExternalPpl = true;      // Uses the PointPerfect Library
+        present.gnss_to_uart = true;
+        present.galileoHasCapable = true;
+        present.multipathMitigation = true; // UM980 has MPM, other platforms do not
+        present.minCno = true;
+        present.minElevation = true;
+        present.dynamicModel = true;
+        present.display_i2c0 = true;
+        present.i2c0BusSpeed_400 = true; // Run display bus at higher speed
+        present.display_type = DISPLAY_128x64;
+        present.microSd = true;
+        present.gpioExpander = true;
+        present.microSdCardDetectGpioExpanderHigh = true; // CD is on GPIO 5 of expander. High = SD in place.
+
+#ifdef COMPILE_IM19_IMU
+        present.imu_im19 = false; // Allow tiltUpdate() to run
+#endif                           // COMPILE_IM19_IMU
+        pin_I2C0_SDA = 15;
+        pin_I2C0_SCL = 4;
+
+        pin_GnssUart_RX = 26;
+        pin_GnssUart_TX = 27;
+
+              pin_I2C0_SDA = 7;
+        pin_I2C0_SCL = 20;
+
+        pin_GnssUart_RX = 21;
+        pin_GnssUart_TX = 22;
+
+        pin_GNSS_Reset = 33;
+        pin_GNSS_TimePulse = 36; // PPS on LG290P
+
+        pin_SCK = 32;
+        pin_POCI = 25;
+        pin_PICO = 26;
+        pin_microSD_CS = 27;
+
+        pin_gpioExpanderInterrupt = 14; // Pin 'AOI' (Analog Output Input) on Portability Shield
+
+        pin_bluetoothStatusLED = 13; // Blue LED
+        pin_gnssStatusLED = 8; // Green LED
+        //pin_GNSS_DR_Reset = 22; // Push low to reset GNSS/DR.
+
+        //pin_powerButton = 34;
+
+        //pin_IMU_RX = 14; // Pin 16 is not available on Torch due to PSRAM
+        //pin_IMU_TX = 17;
+
+        pin_GNSS_TimePulse = 39; // PPS on UM980
+
+        //pin_muxA = 18; // Controls U12 switch between ESP UART1 to UM980 UART3 or LoRa UART0
+        //pin_muxB = 12; // Controls U18 switch between ESP UART0 to LoRa UART2 or UM980 UART1
+        //pin_usbSelect = 21;
+        //pin_powerAdapterDetect = 36; // Goes low when USB cable is plugged in
+
+        //pin_batteryStatusLED = 0;
+        //pin_bluetoothStatusLED = 32;
+        //pin_gnssStatusLED = 13;
+
+        //pin_beeper = 33;
+
+        //pin_loraRadio_power = 19; // LoRa_EN
+        //pin_loraRadio_boot = 23;  // LoRa_BOOT0
+        //pin_loraRadio_reset = 5;  // LoRa_NRST
+
+        //DMW_if systemPrintf("pin_bluetoothStatusLED: %d\r\n", pin_bluetoothStatusLED);
+        //pinMode(pin_bluetoothStatusLED, OUTPUT);
+
+        //DMW_if systemPrintf("pin_gnssStatusLED: %d\r\n", pin_gnssStatusLED);
+        //pinMode(pin_gnssStatusLED, OUTPUT);
+
+        //DMW_if systemPrintf("pin_batteryStatusLED: %d\r\n", pin_batteryStatusLED);
+        //pinMode(pin_batteryStatusLED, OUTPUT);
+
+        // Turn on Bluetooth, GNSS, and Battery LEDs to indicate power on
+        //bluetoothLedOn();
+        //gnssStatusLedOn();
+        //batteryStatusLedOn();
+
+        //pinMode(pin_beeper, OUTPUT);
+        //beepOff();
+
+        //pinMode(pin_powerButton, INPUT);
+
+        pinMode(pin_GNSS_TimePulse, INPUT);
+              // Turn on Bluetooth and GNSS LEDs to indicate power on
+        pinMode(pin_bluetoothStatusLED, OUTPUT);
+        bluetoothLedOn();
+        pinMode(pin_gnssStatusLED, OUTPUT);
+        gnssStatusLedOn();
+
+        pinMode(pin_GNSS_TimePulse, INPUT);
+
+        pinMode(pin_GNSS_Reset, OUTPUT);
+        lg290pBoot(); // Tell LG290P to boot
+
+        settings.dataPortBaud = (115200 * 4); // Override settings. LG290P communicates at 460800bps.
+
+        // Disable the microSD card
+        pinMode(pin_microSD_CS, OUTPUT);
+        sdDeselectCard();
+
+        //pinMode(pin_GNSS_DR_Reset, OUTPUT);
+        um980Boot(); // Tell UM980 and DR to boot
+
+        //pinMode(pin_powerAdapterDetect, INPUT); // Has 10k pullup
+
+        //pinMode(pin_usbSelect, OUTPUT);
+        //digitalWrite(pin_usbSelect, HIGH); // Keep CH340 connected to USB bus
+
+        //pinMode(pin_muxA, OUTPUT);
+        //muxSelectUm980(); // Connect ESP UART1 to UM980
+
+        //pinMode(pin_muxB, OUTPUT);
+        //muxSelectUsb(); // Connect ESP UART0 to CH340 Serial
+
+        settings.dataPortBaud = 115200; // Override settings. Use UM980 at 115200bps.
+
+        //pinMode(pin_loraRadio_power, OUTPUT);
+        //loraPowerOff(); // Keep LoRa powered down for now
+
+        //pinMode(pin_loraRadio_boot, OUTPUT);
+        //digitalWrite(pin_loraRadio_boot, LOW); // Exit bootloader, run program
+
+        //pinMode(pin_loraRadio_reset, OUTPUT);
+        //digitalWrite(pin_loraRadio_reset, LOW); // Reset STM32/radio
+        
+        // The following are present on the optional shield. Devices will be marked offline if shield is not present.
+
     }
     else if (productVariant == RTK_TORCH)
     {
