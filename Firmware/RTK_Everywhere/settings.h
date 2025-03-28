@@ -5,7 +5,7 @@
 #include "GNSS_None.h"
 #include "GNSS_ZED.h" //Structs of ZED messages, needed for settings.h
 #include "GNSS_UM980.h" //Structs of UM980 messages, needed for settings.h
-#include "GNSS_Mosaic.h" //Structs of mosaic messages, needed for settings.h
+//#include "GNSS_Mosaic.h" //Structs of mosaic messages, needed for settings.h
 #include "GNSS_LG290P.h" //Structs of LG90P messages, needed for settings.h
 #include <vector>
 
