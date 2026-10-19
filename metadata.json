@@ -1,0 +1,8 @@
+{
+  "name": "Universal RTK Everywhere Hardware & Firmware Studio",
+  "description": "Modular hardware abstraction, pin mapping, onboard IMU tilt correction, and firmware configuration builder for ESP32/C3/C6/S3 and RTK GNSS chipsets (UM980/UM981, ZED-F9P, LG290P, LC29H, K827/K922, Bynav M21/M22).",
+  "version": "1.0.0",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
