@@ -32,6 +32,14 @@ export const App: React.FC = () => {
     boardId: 'cyd-esp32-2432s028',
     gnssId: 'um981',
     deviceRole: 'rover',
+    allowDynamicRoleSwitch: true,
+    defaultComms: {
+      roverCorrectionSource: 'ntrip_wifi',
+      baseCorrectionBroadcast: 'ntrip_caster',
+      dataCollectorOutput: 'bluetooth_spp',
+      wifiMode: 'ap_config',
+      allowInFieldProtocolSwitching: true,
+    },
     btMode: 'classic_spp',
     pins: {
       gnssTx: 27,
@@ -69,6 +77,7 @@ export const App: React.FC = () => {
       ntripPassword: 'BETAPASSWORD',
       loraBroadcastEnabled: false,
       loraFrequencyMhz: 915.0,
+      espNowBroadcastEnabled: false,
     },
     features: {
       enableTouchUI: true,
@@ -76,6 +85,8 @@ export const App: React.FC = () => {
       enableSdLogging: true,
       enableNtripClient: true,
       enableLoRa: false,
+      enableEspNow: false,
+      espNowChannel: 1,
       enableOta: false,
       enablePpl: false,
     },

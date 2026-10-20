@@ -115,8 +115,27 @@ export function generateBoardConfigJson(
             ]
           : [],
       },
+      default_role: config.deviceRole,
+      runtime_switching: {
+        allow_dynamic_role_switch: config.allowDynamicRoleSwitch !== false,
+        allow_in_field_protocol_switch: config.defaultComms?.allowInFieldProtocolSwitching !== false,
+        nvs_storage_enabled: true,
+        supported_interfaces: [
+          'cyd_touchscreen_button',
+          'wifi_captive_portal_192_168_4_1',
+          'bluetooth_ble_cli',
+          'oled_rotary_button_menu',
+          'usb_serial_menu',
+        ],
+      },
+      default_comms: {
+        rover_correction_source: config.defaultComms?.roverCorrectionSource || 'ntrip_wifi',
+        base_correction_broadcast: config.defaultComms?.baseCorrectionBroadcast || 'ntrip_caster',
+        data_collector_output: config.defaultComms?.dataCollectorOutput || 'bluetooth_spp',
+        wifi_mode: config.defaultComms?.wifiMode || 'ap_config',
+      },
       base_station_settings:
-        config.deviceRole === 'base'
+        config.deviceRole === 'base' || config.allowDynamicRoleSwitch !== false
           ? {
               mode: config.baseConfig.mode,
               survey_in: {
@@ -138,14 +157,20 @@ export function generateBoardConfigJson(
                 enabled: config.baseConfig.loraBroadcastEnabled,
                 frequency_mhz: config.baseConfig.loraFrequencyMhz,
               },
+              esp_now_broadcast: {
+                enabled: config.baseConfig.espNowBroadcastEnabled || config.features.enableEspNow,
+                channel: config.features.espNowChannel || 1,
+              },
             }
           : null,
       compilation_flags: {
+        dual_role_support: config.allowDynamicRoleSwitch !== false,
         touch_gui: config.features.enableTouchUI && !!board.hasDisplay,
         web_server: config.features.enableWebServer && board.flashSizeMB >= 8,
         sd_logging: (config.features.enableSdLogging && board.hasMicroSD) || config.addons.sd.enabled,
         ntrip_client: config.features.enableNtripClient,
         lora_transceiver: (config.features.enableLoRa && board.hasLoRa) || config.addons.lora.enabled,
+        esp_now: config.features.enableEspNow && board.family !== 'rp2040',
         ota_update: config.features.enableOta && board.flashSizeMB >= 8,
       },
     },
@@ -283,9 +308,31 @@ ${lora.enabled ? `// --- EXTERNAL LORA TRANSCEIVER MODULE ---
 `}
 
 // ==========================================
-// 5. PROTOCOL & WIRELESS CONFIGURATION
+// 5. OPERATING ROLE & IN-FIELD SWITCHING
 // ==========================================
-${config.deviceRole === 'rover' ? '#define SYSTEM_ROLE_ROVER 1\n#undef SYSTEM_ROLE_BASE' : '#define SYSTEM_ROLE_BASE 1\n#undef SYSTEM_ROLE_ROVER'}
+// Default Power-On Personality (NVS Non-Volatile Storage key "rtkMode"):
+#define DEFAULT_RTK_MODE ${
+  config.deviceRole === 'rover'
+    ? 'RTK_MODE_ROVER'
+    : config.baseConfig.mode === 'fixed_llh' || config.baseConfig.mode === 'fixed_ecef'
+    ? 'RTK_MODE_BASE_FIXED'
+    : 'RTK_MODE_BASE_SURVEY_IN'
+}
+
+// In-field dynamic role & protocol switching:
+#define ALLOW_IN_FIELD_MODE_SWITCHING ${config.allowDynamicRoleSwitch !== false ? '1' : '0'}
+#define NVS_PERSIST_RUNTIME_SETTINGS 1
+
+// Compiles dual-role algorithms (allows field switching without reflashing):
+#define COMPILE_ROVER_MODE 1
+#define COMPILE_BASE_MODE 1
+
+// Default Communication Protocols (hot-swappable in field via Web Portal / CYD Touch / BLE):
+#define DEFAULT_ROVER_CORRECTION_SOURCE_${(config.defaultComms?.roverCorrectionSource || 'ntrip_wifi').toUpperCase()} 1
+#define DEFAULT_BASE_BROADCAST_${(config.defaultComms?.baseCorrectionBroadcast || 'ntrip_caster').toUpperCase()} 1
+#define DEFAULT_DATA_OUTPUT_${(config.defaultComms?.dataCollectorOutput || 'bluetooth_spp').toUpperCase()} 1
+#define DEFAULT_WIFI_MODE_${(config.defaultComms?.wifiMode || 'ap_config').toUpperCase()} 1
+#define ALLOW_IN_FIELD_PROTOCOL_SWITCHING ${config.defaultComms?.allowInFieldProtocolSwitching !== false ? '1' : '0'}
 
 ${isC3orC6 || config.btMode === 'ble_only' ? `// Pure BLE UART (Nordic UART Service - NUS)
 #define COMPILE_BLE_ONLY 1
@@ -316,6 +363,13 @@ ${board.flashSizeMB <= 4 ? `// 4MB Flash Budget Optimization:
 ${config.features.enableTouchUI && board.hasDisplay ? '#define ENABLE_TOUCH_UI 1' : '#undef ENABLE_TOUCH_UI'}
 ${(config.features.enableSdLogging && board.hasMicroSD) || sd.enabled ? '#define ENABLE_SD_LOGGING 1' : '#undef ENABLE_SD_LOGGING'}
 ${(config.features.enableLoRa && board.hasLoRa) || lora.enabled ? '#define ENABLE_LORA_RADIO 1' : '#undef ENABLE_LORA_RADIO'}
+${config.features.enableEspNow && board.family !== 'rp2040' ? `// ESP-NOW 2.4GHz Peer-to-Peer RTCM Direct Link
+#define COMPILE_ESPNOW 1
+#define ESPNOW_CHANNEL ${config.features.espNowChannel || 1}
+#define ESPNOW_MAX_PACKET_LEN 250
+` : `// ESP-NOW Disabled
+#undef COMPILE_ESPNOW
+`}
 
 #endif // __MODULAR_RTK_CONFIG_H__
 `;

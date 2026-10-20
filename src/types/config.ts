@@ -169,10 +169,41 @@ export interface ExternalLoraConfig {
   };
 }
 
+export type RoverCorrectionSource =
+  | 'ntrip_wifi'
+  | 'lora_radio'
+  | 'esp_now'
+  | 'bt_bridge'
+  | 'serial_radio';
+
+export type BaseCorrectionBroadcast =
+  | 'ntrip_caster'
+  | 'esp_now'
+  | 'lora_radio'
+  | 'local_tcp';
+
+export type DataCollectorOutput =
+  | 'bluetooth_spp'
+  | 'ble'
+  | 'usb_serial'
+  | 'tcp_server';
+
+export type DefaultWifiMode = 'ap_config' | 'station_client' | 'off';
+
+export interface DefaultCommsConfig {
+  roverCorrectionSource: RoverCorrectionSource;
+  baseCorrectionBroadcast: BaseCorrectionBroadcast;
+  dataCollectorOutput: DataCollectorOutput;
+  wifiMode: DefaultWifiMode;
+  allowInFieldProtocolSwitching: boolean;
+}
+
 export interface SystemConfiguration {
   boardId: string;
   gnssId: GnssChipId;
-  deviceRole: 'rover' | 'base';
+  deviceRole: 'rover' | 'base'; // Default Power-On Mode
+  allowDynamicRoleSwitch: boolean; // Enables in-field switching stored in NVS flash
+  defaultComms: DefaultCommsConfig;
   btMode: 'ble_only' | 'classic_spp' | 'ble_and_spp' | 'wifi_only';
   pins: {
     gnssTx: number;
@@ -210,6 +241,7 @@ export interface SystemConfiguration {
     ntripPassword: string;
     loraBroadcastEnabled: boolean;
     loraFrequencyMhz: number;
+    espNowBroadcastEnabled: boolean;
   };
   // Add-on Daughter Boards & Accessories
   addons: {
@@ -223,6 +255,8 @@ export interface SystemConfiguration {
     enableSdLogging: boolean;
     enableNtripClient: boolean;
     enableLoRa: boolean;
+    enableEspNow: boolean;
+    espNowChannel: number;
     enableOta: boolean;
     enablePpl: boolean;
   };
