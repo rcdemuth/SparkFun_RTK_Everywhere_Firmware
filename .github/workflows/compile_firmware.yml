@@ -1,0 +1,328 @@
+name: Live RTK Firmware Cloud Compiler
+
+on:
+  workflow_dispatch:
+    inputs:
+      board_id:
+        description: 'Target Board ID'
+        required: true
+        default: 'cyd-esp32-2432s028'
+        type: choice
+        options:
+          - 'cyd-esp32-2432s028'
+          - 'generic-esp32-devkit'
+          - 'esp32-s3-supermini'
+          - 'ai-s3-n16r8'
+          - 'yd-esp32-c3'
+          - 'waveshare-c6-lcd-147'
+          - 'lilygo-lora32-v21'
+          - 'lilygo-t-display-s3'
+          - 'heltec-wifi-lora-32-v3'
+          - 'es3c28p-cyd-s3'
+          - 'adafruit-feather-esp32-s3'
+          - 'esp32-lite'
+      operating_mode:
+        description: 'Default Operating Mode'
+        required: true
+        default: 'rover'
+        type: choice
+        options:
+          - 'rover'
+          - 'base_station'
+      primary_comms:
+        description: 'Primary Communications Protocol'
+        required: true
+        default: 'bluetooth'
+        type: choice
+        options:
+          - 'bluetooth'
+          - 'wifi'
+          - 'esp_now'
+          - 'lora'
+          - 'serial'
+      gnss_model:
+        description: 'GNSS Receiver Engine'
+        required: true
+        default: 'zed-f9p'
+        type: choice
+        options:
+          - 'zed-f9p'
+          - 'um980'
+          - 'lg290p'
+          - 'mosaic-x5'
+          - 'neom8n'
+      custom_config_b64:
+        description: 'Base64 Encoded user_config.h (Optional)'
+        required: false
+        default: ''
+        type: string
+      board_config_json:
+        description: 'JSON Configuration String (Optional)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    name: Compile Firmware (${{ inputs.board_id }} - ${{ inputs.operating_mode }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install esptool & pyserial
+        run: |
+          pip install --upgrade pip
+          pip install esptool pyserial
+
+      - name: Cache Arduino Core & Libraries
+        id: cache-arduino
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.arduino15/packages
+            ~/.arduino15/staging
+            ~/Arduino/libraries
+          key: ${{ runner.os }}-arduino-esp32-3.0.7-core-libs-v2
+          restore-keys: |
+            ${{ runner.os }}-arduino-esp32-3.0.7-
+
+      - name: Install Arduino CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+          sudo mv bin/arduino-cli /usr/local/bin/
+          arduino-cli version
+
+      - name: Configure Arduino CLI & ESP32 Package
+        run: |
+          arduino-cli config init --additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+          arduino-cli config set library.enable_unsafe_install true
+          arduino-cli core update-index
+
+      - name: Install ESP32 Platform Core (3.0.7)
+        run: |
+          if [ ! -d "$HOME/.arduino15/packages/esp32/hardware/esp32/3.0.7" ]; then
+            arduino-cli core install esp32:esp32@3.0.7
+          else
+            echo "ESP32 Core 3.0.7 already cached."
+          fi
+
+      - name: Install Required Libraries
+        run: |
+          arduino-cli lib update-index
+          arduino-cli lib install ESP32Time@2.0.0 || true
+          arduino-cli lib install JC_Button@2.1.2 || true
+          arduino-cli lib install PubSubClient@2.8.0 || true
+          arduino-cli lib install "SdFat"@2.1.1 || true
+          arduino-cli lib install "SparkFun MAX1704x Fuel Gauge Arduino Library"@1.0.4 || true
+          arduino-cli lib install "SparkFun u-blox GNSS v3"@3.1.14 || true
+          arduino-cli lib install "SparkFun Qwiic OLED Arduino Library"@1.0.15 || true
+          arduino-cli lib install SSLClientESP32@2.0.0 || true
+          arduino-cli lib install "SparkFun BQ40Z50 Battery Manager Arduino Library"@1.0.0 || true
+          arduino-cli lib install "ArduinoMqttClient"@0.1.8 || true
+          arduino-cli lib install "SparkFun u-blox PointPerfect Library"@1.11.4 || true
+          arduino-cli lib install "SparkFun IM19 IMU Arduino Library"@1.1.1 || true
+          arduino-cli lib install "SparkFun UM980 Triband RTK GNSS Arduino Library"@2.0.2 || true
+          arduino-cli lib install "SparkFun LG290P Quadband RTK GNSS Arduino Library"@3.1.1 || true
+          arduino-cli lib install "SparkFun I2C Expander Arduino Library"@1.0.1 || true
+          arduino-cli lib install "SparkFun SSD168x I2C Interface Library"@1.0.1 || true
+          arduino-cli lib install ArduinoJson@7.4.2 || true
+          arduino-cli lib install "SparkFun Extensible Message Parser"@2.0.2 || true
+          arduino-cli lib install "SparkFun Toolkit"@1.0.6 || true
+          # Install ESP32_BleSerial fork if not already present
+          if [ ! -d "$HOME/Arduino/libraries/ESP32_BleSerial" ]; then
+            arduino-cli lib install --git-url https://github.com/sparkfun/ESP32_BleSerial.git || true
+          fi
+
+      - name: Inject Custom Configuration
+        run: |
+          cd Firmware/RTK_Everywhere
+          
+          # Check if base64 user config provided
+          if [ -n "${{ inputs.custom_config_b64 }}" ]; then
+            echo "${{ inputs.custom_config_b64 }}" | base64 --decode > user_config.h
+            echo "Successfully decoded custom user_config.h"
+          else
+            # Generate modular user_config.h from inputs
+            echo "// Auto-generated configuration by GitHub Actions" > user_config.h
+            echo "#define FIRMWARE_COMPILED_BY_GITHUB_ACTIONS 1" >> user_config.h
+            echo "#define CONFIG_BOARD_ID \"${{ inputs.board_id }}\"" >> user_config.h
+            
+            # Target board macro
+            BOARD_MACRO="BOARD_$(echo "${{ inputs.board_id }}" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/_/g')"
+            echo "#define ${BOARD_MACRO} 1" >> user_config.h
+            
+            # Operating mode macro
+            if [ "${{ inputs.operating_mode }}" = "base_station" ]; then
+              echo "#define DEFAULT_OPERATING_MODE_BASE 1" >> user_config.h
+            else
+              echo "#define DEFAULT_OPERATING_MODE_ROVER 1" >> user_config.h
+            fi
+
+            # Comms mode macro
+            echo "#define DEFAULT_COMMS_${{ inputs.primary_comms }}" | tr '[:lower:]' '[:upper:]' >> user_config.h
+
+            # GNSS macro
+            GNSS_MACRO="GNSS_$(echo "${{ inputs.gnss_model }}" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/_/g')"
+            echo "#define ${GNSS_MACRO} 1" >> user_config.h
+            
+            echo "Generated default user_config.h:"
+            cat user_config.h
+          fi
+
+          if [ -n "${{ inputs.board_config_json }}" ]; then
+            echo '${{ inputs.board_config_json }}' > board_config.json
+          fi
+
+      - name: Compile RTK Everywhere Sketch
+        run: |
+          BOARD="${{ inputs.board_id }}"
+          CHIP="esp32"
+          FQBN="esp32:esp32:esp32"
+          
+          # Determine FQBN and chip architecture
+          if [[ "$BOARD" == *"esp32-s3"* ]] || [[ "$BOARD" == *"ai-s3"* ]] || [[ "$BOARD" == *"es3c28p"* ]] || [[ "$BOARD" == *"t-display-s3"* ]] || [[ "$BOARD" == *"feather-esp32-s3"* ]]; then
+            CHIP="esp32s3"
+            FQBN="esp32:esp32:esp32s3:CDCOnBoot=default,PSRAM=qio"
+          elif [[ "$BOARD" == *"c3"* ]]; then
+            CHIP="esp32c3"
+            FQBN="esp32:esp32:esp32c3:CDCOnBoot=default"
+          elif [[ "$BOARD" == *"c6"* ]]; then
+            CHIP="esp32c6"
+            FQBN="esp32:esp32:esp32c6:CDCOnBoot=default"
+          elif [[ "$BOARD" == *"cyd"* ]]; then
+            CHIP="esp32"
+            FQBN="esp32:esp32:esp32:DebugLevel=none,PSRAM=disabled"
+          fi
+          
+          echo "Selected Board: $BOARD"
+          echo "Chip Architecture: $CHIP"
+          echo "FQBN: $FQBN"
+          
+          BOARD_MACRO="BOARD_$(echo "$BOARD" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/_/g')"
+          GNSS_MACRO="GNSS_$(echo "${{ inputs.gnss_model }}" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/_/g')"
+          
+          # Ensure custom partition table is available
+          mkdir -p "$HOME/.arduino15/packages/esp32/hardware/esp32/3.0.7/tools/partitions"
+          cp Firmware/RTKEverywhere.csv "$HOME/.arduino15/packages/esp32/hardware/esp32/3.0.7/tools/partitions/RTKEverywhere.csv" || true
+          
+          cd Firmware/RTK_Everywhere
+          
+          arduino-cli compile \
+            --fqbn "$FQBN" \
+            --warnings default \
+            --build-property build.partitions=RTKEverywhere \
+            --build-property upload.maximum_size=4055040 \
+            --build-property "compiler.cpp.extra_flags=-MMD -c -D${BOARD_MACRO}=1 -D${GNSS_MACRO}=1 -DFIRMWARE_VERSION_MAJOR=99 -DFIRMWARE_VERSION_MINOR=99" \
+            --export-binaries \
+            ./RTK_Everywhere.ino
+
+          echo "Compilation finished successfully!"
+
+      - name: Merge Binaries with esptool into Single All-in-One Flash Image
+        run: |
+          BOARD="${{ inputs.board_id }}"
+          CHIP="esp32"
+          OFFSET_BOOT="0x1000"
+          
+          if [[ "$BOARD" == *"esp32-s3"* ]] || [[ "$BOARD" == *"ai-s3"* ]] || [[ "$BOARD" == *"es3c28p"* ]] || [[ "$BOARD" == *"t-display-s3"* ]] || [[ "$BOARD" == *"feather-esp32-s3"* ]]; then
+            CHIP="esp32s3"
+            OFFSET_BOOT="0x0"
+          elif [[ "$BOARD" == *"c3"* ]] || [[ "$BOARD" == *"c6"* ]]; then
+            CHIP="esp32c3"
+            OFFSET_BOOT="0x0"
+          fi
+          
+          mkdir -p ./output_firmware
+          cd Firmware/RTK_Everywhere/build/*.*.*
+          
+          cp *.bin ../../../output_firmware/
+          cd ../../../output_firmware
+          
+          # Find generated files
+          APP_BIN=$(ls *.ino.bin | head -n 1)
+          BOOT_BIN=$(ls *.bootloader.bin | head -n 1)
+          PART_BIN=$(ls *.partitions.bin | head -n 1)
+          
+          echo "Merging into single 0x0 binary: $APP_BIN, $BOOT_BIN, $PART_BIN"
+          
+          python3 -m esptool --chip "$CHIP" merge_bin \
+            -o "RTK_Everywhere_Merged_Flash_at_0x0.bin" \
+            --flash_mode dio \
+            --flash_freq 80m \
+            --flash_size 4MB \
+            "$OFFSET_BOOT" "$BOOT_BIN" \
+            0x8000 "$PART_BIN" \
+            0x10000 "$APP_BIN"
+            
+          echo "Merged Flash Binary Generated!"
+          ls -lh
+
+      - name: Prepare Artifact Package & README
+        run: |
+          cd output_firmware
+          
+          cat << 'EOF' > README_FLASHING.txt
+========================================================================
+SPARKFUN RTK EVERYWHERE FIRMWARE - LIVE CLOUD BUILD ARTIFACT
+========================================================================
+
+Target Board: ${{ inputs.board_id }}
+Default Mode: ${{ inputs.operating_mode }}
+Communications: ${{ inputs.primary_comms }}
+GNSS Receiver: ${{ inputs.gnss_model }}
+Compiled by: GitHub Actions Workflow Engine
+
+FLASHING OPTIONS:
+------------------------------------------------------------------------
+Option A (Easiest - Single File at 0x0000):
+  File: RTK_Everywhere_Merged_Flash_at_0x0.bin
+  Flashing Command (esptool):
+    esptool.py --port YOUR_PORT write_flash 0x0 RTK_Everywhere_Merged_Flash_at_0x0.bin
+
+  Or use the Web Serial Flasher in the RTK Firmware Studio Web App!
+
+Option B (Standard Multi-Partition Flashing):
+  1. Bootloader -> 0x1000 (ESP32) or 0x0 (ESP32-S3/C3)
+  2. Partitions -> 0x8000
+  3. Firmware   -> 0x10000
+========================================================================
+EOF
+
+          cp ../Firmware/RTK_Everywhere/board_config.json ./ 2>/dev/null || true
+          cp ../Firmware/RTK_Everywhere/user_config.h ./ 2>/dev/null || true
+
+      - name: Upload Compiled Firmware Artifact
+        uses: actions/upload-pages-artifact@v3
+        if: false
+        # Intentionally disabled, using upload-artifact below
+
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtk-firmware-${{ inputs.board_id }}-${{ inputs.operating_mode }}
+          path: output_firmware/
+          retention-days: 30
+
+      - name: Generate Build Summary
+        run: |
+          echo "### 🚀 Live Cloud Compilation Succeeded!" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Selected Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target Board** | \`${{ inputs.board_id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Operating Mode** | \`${{ inputs.operating_mode }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Primary Comms** | \`${{ inputs.primary_comms }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **GNSS Receiver** | \`${{ inputs.gnss_model }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📦 **Merged Binary**: \`RTK_Everywhere_Merged_Flash_at_0x0.bin\` (Ready for single-click flashing at \`0x0\`)" >> $GITHUB_STEP_SUMMARY
+          echo "📥 You can download the full artifact zip from the run artifacts section below." >> $GITHUB_STEP_SUMMARY

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Satellite, Cpu, Navigation, AlertTriangle, ShieldCheck, HardDrive, Download } from 'lucide-react';
+import { Satellite, Cpu, Navigation, AlertTriangle, ShieldCheck, HardDrive, Download, Cloud, Sparkles } from 'lucide-react';
 import { BoardDefinition, GnssChipDefinition, SystemConfiguration } from '../types/config';
 import { estimateMemoryBudget } from '../utils/codeGenerator';
 
@@ -10,6 +10,7 @@ interface Props {
   activeNav: string;
   setActiveNav: (nav: any) => void;
   onOpenExport: () => void;
+  onOpenCloudCompiler?: () => void;
 }
 
 export const Header: React.FC<Props> = ({
@@ -103,14 +104,22 @@ export const Header: React.FC<Props> = ({
             )}
           </div>
 
-          {/* Export Action */}
+          {/* Action Buttons */}
           <div className="flex items-center space-x-2">
             <button
+              onClick={() => setActiveNav('cloud_compiler')}
+              className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5"
+            >
+              <Cloud className="w-3.5 h-3.5" />
+              <span>Live Cloud Build</span>
+            </button>
+
+            <button
               onClick={onOpenExport}
-              className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-cyan-600/20 transition flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold shadow transition flex items-center gap-1.5"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Get JSON & Headers</span>
+              <span>JSON & Headers</span>
             </button>
           </div>
         </div>
@@ -119,20 +128,22 @@ export const Header: React.FC<Props> = ({
         <nav className="flex space-x-1 border-t border-slate-800/80 overflow-x-auto py-1 text-xs">
           {[
             { id: 'builder', label: 'Hardware Configurator' },
-            { id: 'catalog', label: 'Ecosystem & Low-Cost Guide' },
+            { id: 'cloud_compiler', label: 'Live Cloud Compiler (Actions)' },
             { id: 'cyd_simulator', label: 'CYD Touchscreen UI' },
+            { id: 'catalog', label: 'Ecosystem & Low-Cost Guide' },
             { id: 'live_console', label: 'Live GNSS & Serial' },
             { id: 'code_export', label: 'Code & JSON Export' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveNav(tab.id)}
-              className={`px-3 py-1.5 rounded-md font-medium whitespace-nowrap transition ${
+              className={`px-3 py-1.5 rounded-md font-medium whitespace-nowrap transition flex items-center gap-1.5 ${
                 activeNav === tab.id
                   ? 'bg-slate-800 text-cyan-400 font-semibold shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
               }`}
             >
+              {tab.id === 'cloud_compiler' && <Cloud className="w-3 h-3 text-emerald-400" />}
               {tab.label}
             </button>
           ))}

@@ -9,12 +9,13 @@ import { CodeOutputModal } from './components/CodeOutputModal';
 import { LiveConsole } from './components/LiveConsole';
 import { HardwareCatalogModal } from './components/HardwareCatalogModal';
 import { AddonAccessoriesEditor } from './components/AddonAccessoriesEditor';
+import { CloudCompilerModal } from './components/CloudCompilerModal';
 import { BOARDS } from './data/boards';
 import { GNSS_MODULES } from './data/gnssModules';
 import { BoardDefinition, GnssChipDefinition, SystemConfiguration } from './types/config';
-import { Bookmark, Sparkles, Layers, Sliders, Check } from 'lucide-react';
+import { Bookmark, Sparkles, Layers, Sliders, Check, Cloud } from 'lucide-react';
 
-const VALID_TABS = ['builder', 'catalog', 'cyd_simulator', 'live_console', 'code_export'];
+const VALID_TABS = ['builder', 'cloud_compiler', 'catalog', 'cyd_simulator', 'live_console', 'code_export'];
 
 export const App: React.FC = () => {
   // Default selected board: Cheap Yellow Display (CYD) ESP32-2432S028 as explicitly requested by user
@@ -337,15 +338,31 @@ export const App: React.FC = () => {
               config={config}
               onChangeConfig={setConfig}
             />
-            <div className="pt-2 flex justify-end">
+            <div className="pt-2 flex flex-wrap items-center justify-end gap-3">
+              <button
+                onClick={() => handleSetActiveNav('cloud_compiler')}
+                className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-emerald-600/25 transition flex items-center gap-2"
+              >
+                <Cloud className="w-4 h-4" />
+                <span>Compile in Cloud (Zero Install) →</span>
+              </button>
+
               <button
                 onClick={() => handleSetActiveNav('code_export')}
-                className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-cyan-600/25 transition"
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-sm font-semibold shadow transition"
               >
-                Generate & Inspect JSON / C++ Header →
+                Inspect C++ / JSON →
               </button>
             </div>
           </div>
+        )}
+
+        {activeNav === 'cloud_compiler' && (
+          <CloudCompilerModal
+            selectedBoard={selectedBoard}
+            selectedGnss={selectedGnss}
+            config={config}
+          />
         )}
 
         {activeNav === 'cyd_simulator' && (
@@ -366,6 +383,7 @@ export const App: React.FC = () => {
             selectedBoard={selectedBoard}
             selectedGnss={selectedGnss}
             config={config}
+            onOpenCloudCompiler={() => handleSetActiveNav('cloud_compiler')}
           />
         )}
       </main>

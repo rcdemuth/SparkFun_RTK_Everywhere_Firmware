@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Code, Copy, Check, Download, FileText, Terminal, Layers } from 'lucide-react';
+import { Code, Copy, Check, Download, FileText, Terminal, Layers, Cloud, Sparkles } from 'lucide-react';
 import { BoardDefinition, GnssChipDefinition, SystemConfiguration } from '../types/config';
 import {
   generateBoardConfigJson,
@@ -11,12 +11,14 @@ interface Props {
   selectedBoard: BoardDefinition;
   selectedGnss: GnssChipDefinition;
   config: SystemConfiguration;
+  onOpenCloudCompiler?: () => void;
 }
 
 export const CodeOutputModal: React.FC<Props> = ({
   selectedBoard,
   selectedGnss,
   config,
+  onOpenCloudCompiler,
 }) => {
   const [activeTab, setActiveTab] = useState<'json' | 'header' | 'platformio' | 'arduino'>('json');
   const [copied, setCopied] = useState<boolean>(false);
@@ -92,6 +94,25 @@ arduino-cli compile --fqbn ${fqbn} \\
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl space-y-0">
+      {/* Live Compilation Notice Banner */}
+      <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-cyan-950/80 px-4 py-2.5 border-b border-emerald-500/30 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2">
+          <Cloud className="w-4 h-4 text-emerald-400 animate-pulse" />
+          <span className="text-slate-200">
+            <strong className="text-emerald-300">Zero Local Toolchain:</strong> You can compile and package this exact firmware configuration in the cloud via GitHub Actions.
+          </span>
+        </div>
+        {onOpenCloudCompiler && (
+          <button
+            onClick={onOpenCloudCompiler}
+            className="px-3 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-md text-xs font-bold shadow transition flex items-center gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Open Cloud Compiler</span>
+          </button>
+        )}
+      </div>
+
       {/* Tab bar */}
       <div className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-2">

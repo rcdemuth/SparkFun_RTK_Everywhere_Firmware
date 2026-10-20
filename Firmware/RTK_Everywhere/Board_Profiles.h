@@ -26,6 +26,10 @@
 
 #include <Arduino.h>
 
+#if __has_include("user_config.h")
+#include "user_config.h"
+#endif
+
 struct BoardHardwareConfig {
     const char * name;
     int pin_gnss_tx; // MCU TX to GNSS RX
@@ -72,18 +76,30 @@ enum AddonLoraChip_e {
 // ----------------------------------------------------
 #if defined(BOARD_CYD_ESP32_2432S028)
 #define BOARD_DETECTED_NAME "CYD ESP32-2432S028"
+#ifndef PIN_GNSS_TX_DEFAULT
 #define PIN_GNSS_TX_DEFAULT 27
+#endif
+#ifndef PIN_GNSS_RX_DEFAULT
 #define PIN_GNSS_RX_DEFAULT 22
-#define PIN_GNSS_RESET_DEFAULT 35
-#define PIN_GNSS_PPS_DEFAULT 21
-#define PIN_I2C_SDA_DEFAULT 27
-#define PIN_I2C_SCL_DEFAULT 22
+#endif
+#ifndef PIN_GNSS_RESET_DEFAULT
+#define PIN_GNSS_RESET_DEFAULT -1
+#endif
+#ifndef PIN_GNSS_PPS_DEFAULT
+#define PIN_GNSS_PPS_DEFAULT 35
+#endif
+#ifndef PIN_I2C_SDA_DEFAULT
+#define PIN_I2C_SDA_DEFAULT 25
+#endif
+#ifndef PIN_I2C_SCL_DEFAULT
+#define PIN_I2C_SCL_DEFAULT 26
+#endif
 #define PIN_TFT_CS_DEFAULT 15
 #define PIN_TFT_DC_DEFAULT 2
 #define PIN_TOUCH_CS_DEFAULT 33
 #define PIN_TOUCH_IRQ_DEFAULT 36
 #define PIN_SD_CS_DEFAULT 5
-#define PIN_STATUS_LED_DEFAULT 16
+#define PIN_STATUS_LED_DEFAULT 4
 #define HAS_SPI_TOUCH_SCREEN 1
 #define BOARD_FLASH_SIZE 4
 
