@@ -13,7 +13,6 @@ on:
   workflow_dispatch:
 
 
-#
 # Sets permissions of the GITHUB_TOKEN to allow files to be committed to gh-pages branch
 permissions:
   contents: write

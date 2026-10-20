@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
-import { MemoryBottleneckAnalysis } from './components/MemoryBottleneckAnalysis';
 import { BoardSelector } from './components/BoardSelector';
 import { GnssTiltSelector } from './components/GnssTiltSelector';
 import { PinMatrixEditor } from './components/PinMatrixEditor';
@@ -15,6 +14,8 @@ import { GNSS_MODULES } from './data/gnssModules';
 import { BoardDefinition, GnssChipDefinition, SystemConfiguration } from './types/config';
 import { Bookmark, Sparkles, Layers, Sliders, Check } from 'lucide-react';
 
+const VALID_TABS = ['builder', 'catalog', 'cyd_simulator', 'live_console', 'code_export'];
+
 export const App: React.FC = () => {
   // Default selected board: Cheap Yellow Display (CYD) ESP32-2432S028 as explicitly requested by user
   const [selectedBoard, setSelectedBoard] = useState<BoardDefinition>(
@@ -26,7 +27,29 @@ export const App: React.FC = () => {
     GNSS_MODULES.find((g) => g.id === 'um981') || GNSS_MODULES[0]
   );
 
-  const [activeNav, setActiveNav] = useState<string>('builder');
+  const getInitialTab = () => {
+    const hash = window.location.hash.replace('#', '');
+    return VALID_TABS.includes(hash) ? hash : 'builder';
+  };
+
+  const [activeNav, setActiveNav] = useState<string>(getInitialTab);
+
+  // Sync hash changes for GitHub Pages direct links & browser back/forward buttons
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (VALID_TABS.includes(hash)) {
+        setActiveNav(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const handleSetActiveNav = (tab: string) => {
+    setActiveNav(tab);
+    window.location.hash = tab;
+  };
 
   const [config, setConfig] = useState<SystemConfiguration>({
     boardId: 'cyd-esp32-2432s028',
@@ -44,13 +67,13 @@ export const App: React.FC = () => {
     pins: {
       gnssTx: 27,
       gnssRx: 22,
-      gnssReset: 35,
-      gnssPps: 21,
-      i2cSda: 27,
-      i2cScl: 22,
+      gnssReset: -1,
+      gnssPps: 35,
+      i2cSda: 25,
+      i2cScl: 26,
       sdCs: 5,
       loraCs: -1,
-      statusLed: 16,
+      statusLed: 4,
     },
     tilt: {
       enabled: true,
@@ -234,8 +257,8 @@ export const App: React.FC = () => {
         selectedGnss={selectedGnss}
         config={config}
         activeNav={activeNav}
-        setActiveNav={setActiveNav}
-        onOpenExport={() => setActiveNav('code_export')}
+        setActiveNav={handleSetActiveNav}
+        onOpenExport={() => handleSetActiveNav('code_export')}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -285,18 +308,13 @@ export const App: React.FC = () => {
             onSelectCombo={(b, g) => {
               handleSelectBoard(b);
               handleSelectGnss(g);
-              setActiveNav('builder');
+              handleSetActiveNav('builder');
             }}
           />
         )}
 
-        {activeNav === 'bottlenecks' && (
-          <MemoryBottleneckAnalysis selectedBoard={selectedBoard} config={config} />
-        )}
-
         {activeNav === 'builder' && (
           <div className="space-y-8">
-            <MemoryBottleneckAnalysis selectedBoard={selectedBoard} config={config} />
             <BoardSelector selectedBoard={selectedBoard} onSelectBoard={handleSelectBoard} />
             <GnssTiltSelector
               selectedGnss={selectedGnss}
@@ -321,7 +339,7 @@ export const App: React.FC = () => {
             />
             <div className="pt-2 flex justify-end">
               <button
-                onClick={() => setActiveNav('code_export')}
+                onClick={() => handleSetActiveNav('code_export')}
                 className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-cyan-600/25 transition"
               >
                 Generate & Inspect JSON / C++ Header →

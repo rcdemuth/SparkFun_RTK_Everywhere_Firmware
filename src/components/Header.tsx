@@ -123,7 +123,6 @@ export const Header: React.FC<Props> = ({
             { id: 'cyd_simulator', label: 'CYD Touchscreen UI' },
             { id: 'live_console', label: 'Live GNSS & Serial' },
             { id: 'code_export', label: 'Code & JSON Export' },
-            { id: 'bottlenecks', label: 'Memory Analysis' },
           ].map((tab) => (
             <button
               key={tab.id}
