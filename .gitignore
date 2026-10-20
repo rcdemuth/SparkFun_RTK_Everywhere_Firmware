@@ -75,3 +75,8 @@ File_to_Hex_Data_Array
 
 # Claude workspace metadata
 **/.claude/
+
+# Web App Dependencies & Builds
+node_modules/
+dist/
+.DS_Store
