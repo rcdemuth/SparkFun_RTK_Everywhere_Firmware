@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { SystemConfiguration, AddonScreenType, BoardDefinition } from '../types/config';
 import { ADDON_SCREENS, LORA_MODULES } from '../data/accessories';
+import { SwitchesLedsEditor } from './SwitchesLedsEditor';
 
 interface Props {
   selectedBoard: BoardDefinition;
@@ -217,7 +218,7 @@ export const AddonAccessoriesEditor: React.FC<Props> = ({
                     <div className="flex items-center space-x-2">
                       <span className="text-slate-400">I2C Address:</span>
                       <select
-                        value={config.addons.screen.i2cAddress}
+                        value={config.addons.screen.i2cAddress || (selectedScreenOpt.type === 'lcd1602_i2c' ? '0x27' : '0x3C')}
                         onChange={(e) =>
                           onChangeConfig({
                             ...config,
@@ -229,8 +230,10 @@ export const AddonAccessoriesEditor: React.FC<Props> = ({
                         }
                         className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 font-mono text-xs"
                       >
-                        <option value="0x3C">0x3C (Standard)</option>
-                        <option value="0x3D">0x3D (Alternate)</option>
+                        <option value="0x27">0x27 (Standard 1602 PCF8574)</option>
+                        <option value="0x3F">0x3F (Alternate 1602 PCF8574A)</option>
+                        <option value="0x3C">0x3C (Standard OLED SSD1306)</option>
+                        <option value="0x3D">0x3D (Alternate OLED)</option>
                       </select>
                     </div>
                   )}
@@ -273,6 +276,129 @@ export const AddonAccessoriesEditor: React.FC<Props> = ({
                                 screen: {
                                   ...config.addons.screen,
                                   pins: { ...config.addons.screen.pins, scl: parseInt(e.target.value) || 0 },
+                                },
+                              },
+                            })
+                          }
+                          className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-white font-mono text-xs"
+                        />
+                      </div>
+                    </>
+                  ) : selectedScreenOpt.interface === 'Parallel' ? (
+                    <>
+                      <div>
+                        <label className="text-slate-400 text-[11px] block mb-1">LCD RS Pin</label>
+                        <input
+                          type="number"
+                          value={config.addons.screen.pins.lcdRs ?? 19}
+                          onChange={(e) =>
+                            onChangeConfig({
+                              ...config,
+                              addons: {
+                                ...config.addons,
+                                screen: {
+                                  ...config.addons.screen,
+                                  pins: { ...config.addons.screen.pins, lcdRs: parseInt(e.target.value) || 0 },
+                                },
+                              },
+                            })
+                          }
+                          className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-white font-mono text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-slate-400 text-[11px] block mb-1">LCD Enable (EN) Pin</label>
+                        <input
+                          type="number"
+                          value={config.addons.screen.pins.lcdEn ?? 23}
+                          onChange={(e) =>
+                            onChangeConfig({
+                              ...config,
+                              addons: {
+                                ...config.addons,
+                                screen: {
+                                  ...config.addons.screen,
+                                  pins: { ...config.addons.screen.pins, lcdEn: parseInt(e.target.value) || 0 },
+                                },
+                              },
+                            })
+                          }
+                          className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-white font-mono text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-slate-400 text-[11px] block mb-1">Data D4 Pin</label>
+                        <input
+                          type="number"
+                          value={config.addons.screen.pins.lcdD4 ?? 18}
+                          onChange={(e) =>
+                            onChangeConfig({
+                              ...config,
+                              addons: {
+                                ...config.addons,
+                                screen: {
+                                  ...config.addons.screen,
+                                  pins: { ...config.addons.screen.pins, lcdD4: parseInt(e.target.value) || 0 },
+                                },
+                              },
+                            })
+                          }
+                          className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-white font-mono text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-slate-400 text-[11px] block mb-1">Data D5 Pin</label>
+                        <input
+                          type="number"
+                          value={config.addons.screen.pins.lcdD5 ?? 5}
+                          onChange={(e) =>
+                            onChangeConfig({
+                              ...config,
+                              addons: {
+                                ...config.addons,
+                                screen: {
+                                  ...config.addons.screen,
+                                  pins: { ...config.addons.screen.pins, lcdD5: parseInt(e.target.value) || 0 },
+                                },
+                              },
+                            })
+                          }
+                          className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-white font-mono text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-slate-400 text-[11px] block mb-1">Data D6 Pin</label>
+                        <input
+                          type="number"
+                          value={config.addons.screen.pins.lcdD6 ?? 17}
+                          onChange={(e) =>
+                            onChangeConfig({
+                              ...config,
+                              addons: {
+                                ...config.addons,
+                                screen: {
+                                  ...config.addons.screen,
+                                  pins: { ...config.addons.screen.pins, lcdD6: parseInt(e.target.value) || 0 },
+                                },
+                              },
+                            })
+                          }
+                          className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-white font-mono text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-slate-400 text-[11px] block mb-1">Data D7 Pin</label>
+                        <input
+                          type="number"
+                          value={config.addons.screen.pins.lcdD7 ?? 16}
+                          onChange={(e) =>
+                            onChangeConfig({
+                              ...config,
+                              addons: {
+                                ...config.addons,
+                                screen: {
+                                  ...config.addons.screen,
+                                  pins: { ...config.addons.screen.pins, lcdD7: parseInt(e.target.value) || 0 },
                                 },
                               },
                             })
@@ -953,6 +1079,13 @@ export const AddonAccessoriesEditor: React.FC<Props> = ({
           </div>
         )}
       </div>
+
+      {/* 4. SWITCHES, BUTTONS & STATUS LEDS SECTION */}
+      <SwitchesLedsEditor
+        selectedBoard={selectedBoard}
+        config={config}
+        onChangeConfig={onChangeConfig}
+      />
     </div>
   );
 };

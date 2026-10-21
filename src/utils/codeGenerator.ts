@@ -1,4 +1,10 @@
-import { BoardDefinition, GnssChipDefinition, SystemConfiguration } from '../types/config';
+import {
+  BoardDefinition,
+  GnssChipDefinition,
+  SystemConfiguration,
+  SwitchItemConfig,
+  LedItemConfig,
+} from '../types/config';
 
 export function generateBoardConfigJson(
   config: SystemConfiguration,
@@ -83,6 +89,8 @@ export function generateBoardConfigJson(
             }
           : null,
       },
+      switches: config.switches || [],
+      status_leds: config.leds || [],
     },
     system_profile: {
       operating_role: config.deviceRole,
@@ -190,6 +198,99 @@ export function generateCppHeader(
   const sd = config.addons.sd;
   const lora = config.addons.lora;
 
+  const activeSwitches: SwitchItemConfig[] =
+    config.switches && config.switches.length > 0
+      ? config.switches
+      : [
+          {
+            id: 'sw_pwr',
+            label: 'Main Power & Sleep',
+            poleType: 'spst',
+            actionType: 'momentary',
+            contactType: 'normally_open',
+            style: 'push_button',
+            function: 'power_sleep',
+            gpio1: 34,
+            pullMode: 'pullup',
+            debounceMs: 50,
+          },
+          {
+            id: 'sw_mode',
+            label: 'Rover / Base Toggle',
+            poleType: 'spdt',
+            actionType: 'latching',
+            contactType: 'normally_open',
+            style: 'toggle',
+            function: 'gnss_mode_switch',
+            gpio1: 0,
+            gpio2: 35,
+            pullMode: 'pullup',
+            debounceMs: 80,
+          },
+          {
+            id: 'sw_bt',
+            label: 'Bluetooth Pairing',
+            poleType: 'spst',
+            actionType: 'momentary',
+            contactType: 'normally_open',
+            style: 'tactile',
+            function: 'bt_pairing',
+            gpio1: 32,
+            pullMode: 'pullup',
+            debounceMs: 40,
+          },
+        ];
+
+  const activeLeds: LedItemConfig[] =
+    config.leds && config.leds.length > 0
+      ? config.leds
+      : [
+          {
+            id: 'led_pwr',
+            label: 'Power & Battery',
+            type: 'discrete_single',
+            color: 'yellow',
+            function: 'power_battery',
+            pin: 25,
+            activeHigh: true,
+            resistorValue: '220Ω (1/4W)',
+            resistorNote: '220Ω in series with Anode',
+          },
+          {
+            id: 'led_bt',
+            label: 'Bluetooth Link',
+            type: 'discrete_single',
+            color: 'blue',
+            function: 'bt_status',
+            pin: 26,
+            activeHigh: true,
+            resistorValue: '100Ω (1/4W)',
+            resistorNote: '100Ω in series',
+          },
+          {
+            id: 'led_rtk',
+            label: 'RTK Fix Precision',
+            type: 'discrete_single',
+            color: 'green',
+            function: 'rtk_fix_status',
+            pin: 27,
+            activeHigh: true,
+            resistorValue: '150Ω (1/4W)',
+            resistorNote: '150Ω in series',
+          },
+          {
+            id: 'led_base',
+            label: 'GNSS Mode Indicator',
+            type: 'discrete_single',
+            color: 'red',
+            function: 'gnss_mode',
+            pin: 2,
+            activeHigh: true,
+            resistorValue: '220Ω (1/4W)',
+            resistorNote: '220Ω in series',
+          },
+        ];
+
   return `/*
  * Modular RTK Everywhere Hardware & Firmware Profile
  * Target Board: ${board.name}
@@ -261,7 +362,7 @@ ${board.hasDisplay && board.displayType === 'tft_spi_touch' ? `// Integrated Boa
 ${screen.enabled && screen.type !== 'none' ? `// --- ADD-ON DISPLAY SCREEN MODULE ---
 #define HAS_ADDON_SCREEN 1
 #define ADDON_SCREEN_TYPE_${screen.type.toUpperCase()} 1
-#define ADDON_SCREEN_I2C_ADDR ${screen.i2cAddress}
+#define ADDON_SCREEN_I2C_ADDR ${screen.i2cAddress || '0x27'}
 #define PIN_SCREEN_SDA ${screen.pins.sda}
 #define PIN_SCREEN_SCL ${screen.pins.scl}
 #define PIN_SCREEN_CS ${screen.pins.cs}
@@ -269,6 +370,22 @@ ${screen.enabled && screen.type !== 'none' ? `// --- ADD-ON DISPLAY SCREEN MODUL
 #define PIN_SCREEN_RST ${screen.pins.rst}
 #define PIN_SCREEN_BUSY ${screen.pins.busy}
 #define PIN_SCREEN_BLK ${screen.pins.blk}
+${screen.type === 'lcd1602_i2c' ? `// 1602 Character LCD via I2C PCF8574 Backpack
+#define USE_LIQUIDCRYSTAL_I2C 1
+#define LCD1602_I2C_ADDR ${screen.i2cAddress || '0x27'}
+#define LCD1602_COLS 16
+#define LCD1602_ROWS 2
+` : screen.type === 'lcd1602_parallel' ? `// 1602 Character LCD via 4-Bit Parallel GPIO
+#define USE_LIQUIDCRYSTAL_PARALLEL 1
+#define PIN_LCD_RS ${screen.pins.lcdRs ?? 19}
+#define PIN_LCD_EN ${screen.pins.lcdEn ?? 23}
+#define PIN_LCD_D4 ${screen.pins.lcdD4 ?? 18}
+#define PIN_LCD_D5 ${screen.pins.lcdD5 ?? 5}
+#define PIN_LCD_D6 ${screen.pins.lcdD6 ?? 17}
+#define PIN_LCD_D7 ${screen.pins.lcdD7 ?? 16}
+#define LCD1602_COLS 16
+#define LCD1602_ROWS 2
+` : ''}
 ${screen.pins.ec11A >= 0 ? `// EC11 Rotary Encoder Dial
 #define HAS_EC11_ROTARY_ENCODER 1
 #define PIN_EC11_A ${screen.pins.ec11A}
@@ -308,7 +425,30 @@ ${lora.enabled ? `// --- EXTERNAL LORA TRANSCEIVER MODULE ---
 `}
 
 // ==========================================
-// 5. OPERATING ROLE & IN-FIELD SWITCHING
+// 5. HARDWARE SWITCHES & BUTTONS (GPIO WIRED)
+// ==========================================
+${activeSwitches.map((sw) => `// ${sw.label} (${sw.poleType.toUpperCase()} - ${sw.actionType})
+#define PIN_SW_${sw.id.toUpperCase()} ${sw.gpio1}
+${sw.gpio2 !== undefined ? `#define PIN_SW_${sw.id.toUpperCase()}_TH2 ${sw.gpio2}` : ''}
+${sw.gpio3 !== undefined ? `#define PIN_SW_${sw.id.toUpperCase()}_P2_TH1 ${sw.gpio3}` : ''}
+${sw.gpio4 !== undefined ? `#define PIN_SW_${sw.id.toUpperCase()}_P2_TH2 ${sw.gpio4}` : ''}
+#define SW_DEBOUNCE_MS_${sw.id.toUpperCase()} ${sw.debounceMs || 50}
+#define SW_PULL_${sw.id.toUpperCase()} ${sw.pullMode === 'pullup' ? 'INPUT_PULLUP' : sw.pullMode === 'pulldown' ? 'INPUT_PULLDOWN' : 'INPUT'}
+#define SW_FUNCTION_${sw.id.toUpperCase()} FUNCTION_${sw.function.toUpperCase()}
+`).join('\n')}
+
+// ==========================================
+// 6. STATUS LEDS & ADDRESSABLE LED STRIPS
+// ==========================================
+${activeLeds.map((led) => `// ${led.label} (${led.type}, ${led.color}, ${led.function})
+// Required Resistor: ${led.resistorValue}
+#define PIN_LED_${led.id.toUpperCase()} ${led.pin}
+${led.type === 'rgb_discrete' && led.rgbPins ? `#define PIN_LED_${led.id.toUpperCase()}_R ${led.rgbPins.r}\n#define PIN_LED_${led.id.toUpperCase()}_G ${led.rgbPins.g}\n#define PIN_LED_${led.id.toUpperCase()}_B ${led.rgbPins.b}\n// RGB Note: Use 3 separate resistors (Red: 220Ω, Green: 150Ω, Blue: 100Ω)` : ''}
+${led.type === 'addressable_strip' ? `#define HAS_WS2812B_STRIP 1\n#define WS2812B_DATA_PIN ${led.pin}\n#define WS2812B_NUM_PIXELS ${led.stripPixelCount || 8}\n// NeoPixel Note: 330Ω data resistor + 1000uF capacitor across +5V and GND` : ''}
+`).join('\n')}
+
+// ==========================================
+// 7. OPERATING ROLE & IN-FIELD SWITCHING
 // ==========================================
 // Default Power-On Personality (NVS Non-Volatile Storage key "rtkMode"):
 #define DEFAULT_RTK_MODE ${
@@ -420,7 +560,11 @@ lib_deps =
   if (config) {
     const screen = config.addons.screen;
     if (screen.enabled) {
-      if (screen.type === 'ssd1306_096_i2c') {
+      if (screen.type === 'lcd1602_i2c') {
+        extraLibs.push('marcoschwartz/LiquidCrystal_I2C@1.1.4');
+      } else if (screen.type === 'lcd1602_parallel') {
+        extraLibs.push('arduino-libraries/LiquidCrystal');
+      } else if (screen.type === 'ssd1306_096_i2c') {
         extraLibs.push('adafruit/Adafruit SSD1306');
         extraLibs.push('adafruit/Adafruit GFX Library');
       } else if (
@@ -442,6 +586,10 @@ lib_deps =
       if (screen.pins.ec11A >= 0) {
         extraLibs.push('mathertel/RotaryEncoder');
       }
+    }
+
+    if (config.leds && config.leds.some((l) => l.type === 'addressable_strip')) {
+      extraLibs.push('adafruit/Adafruit NeoPixel@^1.12.0');
     }
 
     if (config.addons.lora.enabled || board.hasLoRa) {
@@ -533,7 +681,10 @@ export function estimateMemoryBudget(
   // Add-on Screen
   if (config.addons?.screen?.enabled) {
     const t = config.addons.screen.type;
-    if (t.includes('oled') || t.includes('1306') || t.includes('1106') || t.includes('1315')) {
+    if (t.includes('lcd1602')) {
+      flashKB += 25;
+      ramKB += 1;
+    } else if (t.includes('oled') || t.includes('1306') || t.includes('1106') || t.includes('1315')) {
       flashKB += 80;
       ramKB += 12;
     } else if (t.includes('st77') || t.includes('tft')) {

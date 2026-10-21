@@ -109,6 +109,8 @@ export interface GnssChipDefinition {
 
 export type AddonScreenType =
   | 'none'
+  | 'lcd1602_i2c'
+  | 'lcd1602_parallel'
   | 'ssd1306_096_i2c'
   | 'sh1106_13_i2c'
   | 'ssd1315_keypad_i2c'
@@ -133,6 +135,13 @@ export interface AddonScreenConfig {
     ec11A: number;
     ec11B: number;
     ec11Btn: number;
+    // 1602 Parallel LCD pins
+    lcdRs?: number;
+    lcdEn?: number;
+    lcdD4?: number;
+    lcdD5?: number;
+    lcdD6?: number;
+    lcdD7?: number;
   };
 }
 
@@ -249,6 +258,10 @@ export interface SystemConfiguration {
     sd: MicroSdConfig;
     lora: ExternalLoraConfig;
   };
+  // User Hardware Switches & Buttons
+  switches?: SwitchItemConfig[];
+  // Status LEDs & LED Strips
+  leds?: LedItemConfig[];
   features: {
     enableTouchUI: boolean;
     enableWebServer: boolean;
@@ -260,4 +273,98 @@ export interface SystemConfiguration {
     enableOta: boolean;
     enablePpl: boolean;
   };
+}
+
+// -------------------------------------------------------------
+// SWITCHES & BUTTONS (SPST, SPDT, DPDT)
+// -------------------------------------------------------------
+
+export type SwitchPoleType = 'spst' | 'spdt' | 'dpdt';
+export type SwitchActionType = 'momentary' | 'latching';
+export type SwitchContactType = 'normally_open' | 'normally_closed';
+export type SwitchStyle =
+  | 'push_button'
+  | 'tactile'
+  | 'toggle'
+  | 'rocker'
+  | 'slide'
+  | 'rotary'
+  | 'reed'
+  | 'key';
+
+export type SwitchFunction =
+  | 'power_sleep'
+  | 'menu_next'
+  | 'menu_prev'
+  | 'menu_select'
+  | 'menu_back'
+  | 'gnss_mode_switch'
+  | 'comms_mode_switch'
+  | 'bt_pairing'
+  | 'firmware_update_mode'
+  | 'mark_waypoint'
+  | 'zero_tilt_imu'
+  | 'toggle_wifi_ap'
+  | 'display_backlight'
+  | 'base_restart_survey';
+
+export interface SwitchItemConfig {
+  id: string;
+  label: string;
+  poleType: SwitchPoleType;
+  actionType: SwitchActionType;
+  contactType: SwitchContactType;
+  style: SwitchStyle;
+  function: SwitchFunction;
+  gpio1: number;
+  gpio2?: number; // For SPDT throw 2 or DPDT pole 2
+  gpio3?: number; // For DPDT throw 2
+  gpio4?: number; // For DPDT pole 2 throw 2
+  pullMode: 'pullup' | 'pulldown' | 'external';
+  debounceMs: number;
+  notes?: string;
+}
+
+// -------------------------------------------------------------
+// STATUS LEDS & ADDRESSABLE LED STRIPS
+// -------------------------------------------------------------
+
+export type LedType = 'discrete_single' | 'rgb_discrete' | 'addressable_strip' | 'single_color_strip';
+export type LedColor = 'red' | 'green' | 'blue' | 'yellow' | 'amber' | 'white' | 'rgb_multi';
+
+export type LedFunction =
+  | 'power_battery'
+  | 'bt_status'
+  | 'rtk_fix_status'
+  | 'ntrip_corr_status'
+  | 'gnss_mode'
+  | 'base_caster_status'
+  | 'sd_logging'
+  | 'wifi_status'
+  | 'custom';
+
+export type LedBlinkPattern = 'solid' | 'slow_blink' | 'fast_blink' | 'pulse_heartbeat' | 'off';
+
+export interface LedItemConfig {
+  id: string;
+  label: string;
+  type: LedType;
+  color: LedColor;
+  function: LedFunction;
+  pin: number; // Primary GPIO
+  rgbPins?: {
+    r: number;
+    g: number;
+    b: number;
+  };
+  stripPixelCount?: number;
+  stripProtocol?: 'ws2812b' | 'sk6812' | 'apa102';
+  activeHigh: boolean;
+  patterns?: {
+    idle: LedBlinkPattern;
+    active: LedBlinkPattern;
+    alert: LedBlinkPattern;
+  };
+  resistorNote: string;
+  resistorValue: string;
 }

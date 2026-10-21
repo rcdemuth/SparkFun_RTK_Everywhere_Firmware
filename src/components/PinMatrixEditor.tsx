@@ -413,6 +413,88 @@ export const PinMatrixEditor: React.FC<Props> = ({
         });
       }
     }
+    // 1602 Parallel LCD Pins
+    if (config.addons.screen.type === 'lcd1602_parallel') {
+      const p = config.addons.screen.pins;
+      const parallelPins = [
+        { id: 'lcdRs', name: 'LCD 1602 RS', pin: p.lcdRs ?? 19, desc: 'Register Select pin' },
+        { id: 'lcdEn', name: 'LCD 1602 EN', pin: p.lcdEn ?? 23, desc: 'Enable clock pulse pin' },
+        { id: 'lcdD4', name: 'LCD 1602 D4', pin: p.lcdD4 ?? 18, desc: '4-bit Data line 4' },
+        { id: 'lcdD5', name: 'LCD 1602 D5', pin: p.lcdD5 ?? 5, desc: '4-bit Data line 5' },
+        { id: 'lcdD6', name: 'LCD 1602 D6', pin: p.lcdD6 ?? 17, desc: '4-bit Data line 6' },
+        { id: 'lcdD7', name: 'LCD 1602 D7', pin: p.lcdD7 ?? 16, desc: '4-bit Data line 7' },
+      ];
+      parallelPins.forEach((item) => {
+        pinEntries.push({
+          id: item.id,
+          name: item.name,
+          pin: item.pin,
+          bus: 'GPIO',
+          description: item.desc,
+        });
+      });
+    }
+  }
+
+  // Hardware Switches & Buttons pins
+  if (config.switches && config.switches.length > 0) {
+    config.switches.forEach((sw) => {
+      if (sw.gpio1 >= 0) {
+        pinEntries.push({
+          id: `sw_${sw.id}`,
+          name: `Switch: ${sw.label}`,
+          pin: sw.gpio1,
+          bus: 'Input',
+          description: `${sw.poleType.toUpperCase()} ${sw.actionType} switch (${sw.function})`,
+        });
+      }
+      if (sw.gpio2 !== undefined && sw.gpio2 >= 0) {
+        pinEntries.push({
+          id: `sw_${sw.id}_th2`,
+          name: `Switch: ${sw.label} (Throw 2)`,
+          pin: sw.gpio2,
+          bus: 'Input',
+          description: `Second throw pin for ${sw.label}`,
+        });
+      }
+    });
+  }
+
+  // Status LEDs pins
+  if (config.leds && config.leds.length > 0) {
+    config.leds.forEach((led) => {
+      if (led.type === 'rgb_discrete' && led.rgbPins) {
+        pinEntries.push({
+          id: `led_${led.id}_r`,
+          name: `LED: ${led.label} (Red)`,
+          pin: led.rgbPins.r,
+          bus: 'GPIO',
+          description: `Red channel (Resistor: 220Ω)`,
+        });
+        pinEntries.push({
+          id: `led_${led.id}_g`,
+          name: `LED: ${led.label} (Green)`,
+          pin: led.rgbPins.g,
+          bus: 'GPIO',
+          description: `Green channel (Resistor: 150Ω)`,
+        });
+        pinEntries.push({
+          id: `led_${led.id}_b`,
+          name: `LED: ${led.label} (Blue)`,
+          pin: led.rgbPins.b,
+          bus: 'GPIO',
+          description: `Blue channel (Resistor: 100Ω)`,
+        });
+      } else if (led.pin >= 0) {
+        pinEntries.push({
+          id: `led_${led.id}`,
+          name: `LED: ${led.label}`,
+          pin: led.pin,
+          bus: 'GPIO',
+          description: `${led.type === 'addressable_strip' ? 'WS2812B NeoPixel DIN' : 'Status LED'} (${led.resistorValue})`,
+        });
+      }
+    });
   }
 
   // Detect duplicate pins (excluding -1 unassigned)

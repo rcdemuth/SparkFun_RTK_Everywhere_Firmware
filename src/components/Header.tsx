@@ -129,7 +129,7 @@ export const Header: React.FC<Props> = ({
           {[
             { id: 'builder', label: 'Hardware Configurator' },
             { id: 'cloud_compiler', label: 'Live Cloud Compiler (Actions)' },
-            { id: 'cyd_simulator', label: 'CYD Touchscreen UI' },
+            { id: 'cyd_simulator', label: 'Screen & Menu Simulator (1602/OLED/CYD)' },
             { id: 'catalog', label: 'Ecosystem & Low-Cost Guide' },
             { id: 'live_console', label: 'Live GNSS & Serial' },
             { id: 'code_export', label: 'Code & JSON Export' },
